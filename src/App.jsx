@@ -1,253 +1,220 @@
-import { useEffect, useRef, useState } from "react";
-import { groups, missions, posts, professionalSummary, roles, social, stats } from "./data";
-import { reduce, useCountUp, useSky, useSpy } from "./hooks";
-import profilePhoto from "./images/Aghedo Oseiwe Promise.webp";
-import cvFile from "./cv/Aghedo Oseiwe Promise (1) (1).pdf";
+import {
+  Component,
+  Suspense,
+  lazy,
+  useCallback,
+  useEffect,
+  useState,
+  useSyncExternalStore,
+} from "react";
+import { worlds } from "./worlds";
+import Selector from "./components/Selector";
+import WorldSwitcher from "./components/WorldSwitcher";
+import { portfolio } from "./data/portfolio";
 
-const go = (id) => (e) => {
-  e.preventDefault();
-  document.getElementById(id).scrollIntoView({ behavior: reduce ? "auto" : "smooth" });
+// The 3D intro (and three.js with it) is its own chunk, so it never slows the other worlds.
+const CrownLoader = lazy(() => import("./components/CrownLoader"));
+
+// Play the intro only when someone lands on the selector (not on a deep link, not with reduced motion).
+function shouldPlayIntro() {
+  const q = new URLSearchParams(window.location.search);
+  if (q.get("world") || q.get("intro") === "0") return false;
+  return !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+/* ------------------------------------------------------------------ */
+/* Registry                                                            */
+/* Each world is a dynamic import so heavy ones (3D) never slow the   */
+/* others. Keep the loaders in one place so we can both lazy-render    */
+/* and preload them on hover.                                          */
+/* ------------------------------------------------------------------ */
+const loaders = {
+  professional: () => import("./worlds/professional/Professional"),
+  "3d": () => import("./worlds/threed/ThreeD"),
+  scifi: () => import("./worlds/scifi/SciFi"),
+  cartoon: () => import("./worlds/cartoon/Cartoon"),
 };
 
-function Sky({ page }) {
-  const refs = { sky: useRef(), sun: useRef(), stars: useRef() };
-  const time = useSky(refs);
-  return (
-    <>
-      <div id="sky" ref={refs.sky} />
-      <canvas id="stars" ref={refs.stars} aria-hidden="true" />
-      <div id="sun" ref={refs.sun} aria-hidden="true" />
-      <div id="ground" aria-hidden="true">
-        <svg viewBox="0 0 1200 240" preserveAspectRatio="none">
-          <path d="M0 120C150 60 300 150 480 100S800 40 1000 110 1150 90 1200 70V240H0Z" fill="#0a1024" />
-          <path d="M0 170C200 120 380 190 600 150S980 110 1200 160V240H0Z" fill="#050813" />
-        </svg>
-        <div className="panels" />
-      </div>
-      <Nav time={time} page={page} />
-    </>
-  );
+const components = Object.fromEntries(
+  Object.entries(loaders).map(([id, load]) => [id, lazy(load)])
+);
+
+const preloadWorld = (id) => loaders[id]?.();
+
+/* ------------------------------------------------------------------ */
+/* Routing: keeps ?world=<id> URLs working, but navigates without a    */
+/* full page reload and reacts to the back/forward buttons.            */
+/* ------------------------------------------------------------------ */
+const subscribe = (cb) => {
+  window.addEventListener("popstate", cb);
+  return () => window.removeEventListener("popstate", cb);
+};
+const getSearch = () => window.location.search;
+
+function useWorldId() {
+  const search = useSyncExternalStore(subscribe, getSearch, () => "");
+  const raw = new URLSearchParams(search).get("world");
+  // Only trust ids we actually have a component for.
+  return raw && raw in components ? raw : null;
 }
 
-function Nav({ time, page }) {
-  const sections = ["about", "stack", "work", "contact"];
-  const on = useSpy(page === "home" ? sections : []);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const links = [
-    { label: "Profile", href: "/?page=profile", page: "profile" },
-    { label: "About", href: page === "home" ? "#about" : "/#about", section: "about" },
-    { label: "Toolkit", href: page === "home" ? "#stack" : "/#stack", section: "stack" },
-    { label: "Work", href: page === "home" ? "#work" : "/#work", section: "work" },
-    { label: "Writing", href: "/?page=writing", page: "writing" },
-    { label: "Contact", href: page === "home" ? "#contact" : "/#contact", section: "contact" },
-  ];
+function navigate(id) {
+  const url = new URL(window.location.href);
+  if (id) url.searchParams.set("world", id);
+  else url.searchParams.delete("world");
+  window.history.pushState({}, "", url);
+  window.dispatchEvent(new PopStateEvent("popstate"));
+  window.scrollTo(0, 0);
+}
 
-  useEffect(() => {
-    if (!menuOpen) return;
-    const closeOnEscape = (event) => {
-      if (event.key === "Escape") setMenuOpen(false);
-    };
-    document.addEventListener("keydown", closeOnEscape);
-    return () => document.removeEventListener("keydown", closeOnEscape);
-  }, [menuOpen]);
+/* ------------------------------------------------------------------ */
+/* Resilience: one broken world must not take the whole site down.     */
+/* ------------------------------------------------------------------ */
+class WorldBoundary extends Component {
+  state = { error: null };
 
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+
+  componentDidUpdate(prev) {
+    // Switching worlds clears the error.
+    if (prev.worldId !== this.props.worldId && this.state.error) {
+      this.setState({ error: null });
+    }
+  }
+
+  render() {
+    if (!this.state.error) return this.props.children;
+    return (
+      <Notice
+        title="This world didn't load"
+        body="Something went wrong while opening it. Try again, or pick a different world."
+        actions={[
+          { label: "Try again", onClick: () => window.location.reload() },
+          { label: "Choose another world", onClick: () => navigate(null) },
+        ]}
+      />
+    );
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Small UI pieces (inline styles so the shell has no CSS dependency)  */
+/* ------------------------------------------------------------------ */
+const shell = {
+  minHeight: "100dvh",
+  display: "grid",
+  placeItems: "center",
+  padding: "2rem",
+  font: "16px/1.5 system-ui, sans-serif",
+  color: "inherit",
+  background: "inherit",
+};
+
+function Notice({ title, body, actions = [] }) {
   return (
-    <nav aria-label="Primary" className={menuOpen ? "nav-open" : ""}>
-      <a className="nav-brand" href="/">Aghedo Promise</a>
-      <ul id="primary-navigation" className="nav-links">
-        {links.map(({ label, href, page: targetPage, section }) => (
-          <li key={label}>
-            <a
-              href={href}
-              className={(targetPage === page || section === on) ? "on" : ""}
-              onClick={(event) => {
-                if (section && page === "home") go(section)(event);
-                setMenuOpen(false);
-              }}
+    <main style={shell} role="alert">
+      <div style={{ maxWidth: "28rem" }}>
+        <h1 style={{ fontSize: "1.5rem", margin: "0 0 .5rem" }}>{title}</h1>
+        <p style={{ margin: "0 0 1.25rem", opacity: 0.75 }}>{body}</p>
+        <div style={{ display: "flex", gap: ".75rem", flexWrap: "wrap" }}>
+          {actions.map((a) => (
+            <button
+              key={a.label}
+              onClick={a.onClick}
+              style={{ padding: ".6rem 1rem", cursor: "pointer", font: "inherit" }}
             >
-              {label}
-            </a>
-          </li>
-        ))}
-      </ul>
-      <div className="clock" title="The sky follows the day as you scroll"><i />Kebbi · {time}</div>
-      <button
-        className="menu-toggle"
-        type="button"
-        aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
-        aria-expanded={menuOpen}
-        aria-controls="primary-navigation"
-        onClick={() => setMenuOpen((open) => !open)}
-      >
-        <span />
-        <span />
-        <span />
-      </button>
-    </nav>
+              {a.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </main>
   );
 }
 
-function Role() {
-  const [i, setI] = useState(0);
+// Waits briefly before showing anything, so fast loads never flash a loader.
+function Loading({ delay = 250 }) {
+  const [show, setShow] = useState(false);
   useEffect(() => {
-    if (reduce) return;
-    const id = setInterval(() => setI((n) => (n + 1) % roles.length), 2600);
-    return () => clearInterval(id);
-  }, []);
+    const t = setTimeout(() => setShow(true), delay);
+    return () => clearTimeout(t);
+  }, [delay]);
+  if (!show) return null;
   return (
-    <p className="role" aria-label={roles.join(", ")}>
-      <span key={i}>{roles[i]}</span>
-    </p>
-  );
-}
-
-function Stat({ to, pre = "", label, display }) {
-  const ref = useRef();
-  const n = useCountUp(ref, to);
-  return (
-    <div className="stat" ref={ref}>
-      <b>{display ?? pre + n.toLocaleString("en-US")}</b>
-      <span>{label}</span>
+    <div style={shell} role="status" aria-live="polite">
+      <p style={{ opacity: 0.7, margin: 0 }}>Loading…</p>
     </div>
   );
 }
 
-const Tags = ({ items }) => (
-  <ul className="tg">{items.map((t) => <li key={t}>{t}</li>)}</ul>
-);
+/* ------------------------------------------------------------------ */
+/* App                                                                 */
+/* ------------------------------------------------------------------ */
+function hasWebGL() {
+  try {
+    const c = document.createElement("canvas");
+    return !!(c.getContext("webgl2") || c.getContext("webgl"));
+  } catch {
+    return false;
+  }
+}
 
 export default function App() {
-  const pageParam = new URLSearchParams(window.location.search).get("page");
-  const page = pageParam === "profile" || pageParam === "writing" ? pageParam : "home";
+  const id = useWorldId();
+  const [intro, setIntro] = useState(shouldPlayIntro);
+  const endIntro = useCallback(() => setIntro(false), []);
+
+  // Keep the tab title meaningful per world.
+  useEffect(() => {
+    const name = worlds?.find?.((w) => w.id === id)?.name;
+    const owner = portfolio?.name ?? "Portfolio";
+    document.title = name ? `${name} · ${owner}` : owner;
+  }, [id]);
+
+  const onSelect = useCallback((next) => navigate(next), []);
+
+  if (intro) {
+    return (
+      <Suspense fallback={<div style={{ position: "fixed", inset: 0, background: "#000" }} />}>
+        <CrownLoader onDone={endIntro} />
+      </Suspense>
+    );
+  }
+
+  if (!id) {
+    return <Selector onSelect={onSelect} onPreload={preloadWorld} />;
+  }
+
+  // The 3D world needs WebGL; fall back gracefully instead of a blank canvas.
+  if (id === "3d" && !hasWebGL()) {
+    return (
+      <Notice
+        title="3D isn't available on this device"
+        body="Your browser can't run WebGL, which this world needs. The other worlds show the same work."
+        actions={[
+          { label: "Open the professional view", onClick: () => navigate("professional") },
+          { label: "Choose another world", onClick: () => navigate(null) },
+        ]}
+      />
+    );
+  }
+
+  const World = components[id];
 
   return (
     <>
-      <Sky page={page} />
-      {page === "home" && <header className="hero">
-        <div className="wrap hero-layout">
-          <div className="hero-copy">
-            <p className="live"><i />Available for projects and hiring</p>
-            <h1>Aghedo<br />Promise</h1>
-            <Role />
-            <p className="lede">I build web and mobile products that hold up in the real world, and I teach people to do the same. Working from Kebbi State, Nigeria, on solar power.</p>
-            <div className="cta">
-              <a className="btn p" href="#work" onClick={go("work")}>See my work</a>
-              <a className="btn" href="#contact" onClick={go("contact")}>Get in touch</a>
-            </div>
-          </div>
-          <div className="hero-portrait">
-            <img src={profilePhoto} alt="Aghedo Oseiwe Promise" loading="eager" />
-          </div>
-        </div>
-      </header>}
-
-      <main className={page === "home" ? "" : "subpage"}>
-        {page === "profile" && <section className="sec profile-page">
-          <div className="wrap">
-            <article className="glass profile">
-              <div className="profile-top">
-                <img className="profile-photo" src={profilePhoto} alt="Aghedo Oseiwe Promise" />
-                <div className="profile-heading">
-                  <p className="eyebrow">Academy, Creative Tech &amp; Ministry</p>
-                  <h2>Professional summary</h2>
-                  <a className="btn p cv-download" href={cvFile} download="Aghedo Oseiwe Promise CV.pdf">Download my CV <span aria-hidden="true">↓</span></a>
-                </div>
-              </div>
-              <div className="profile-copy">
-                {professionalSummary.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
-              </div>
-            </article>
-          </div>
-        </section>}
-
-        {page === "writing" && <section className="sec writing-page">
-          <div className="wrap">
-            <p className="eyebrow">Notes from the build</p>
-            <h1 className="page-title">Writing for developers</h1>
-            <p className="page-lede">Practical lessons from building products, solving real-world problems, and sharing what I learn along the way.</p>
-            <div className="writing-list">
-              {posts.map((title) => (
-                <a className="glass post" key={title} href="https://dev.to/aghedopromise" target="_blank" rel="noopener noreferrer">
-                  <span>{title}</span><em>Read on Dev.to <span aria-hidden="true">↗</span></em>
-                </a>
-              ))}
-            </div>
-          </div>
-        </section>}
-
-        {page === "home" && <>
-        <section className="sec" id="about">
-          <div className="wrap">
-            <div className="glass about">
-              <div>
-                <h2>Code, data, and a classroom</h2>
-                <p><strong>Aghedo Oseiwe Promise</strong>, a BEng graduate in Information and Communication Technology, ships MERN stack web apps and offline-first React Native apps.</p>
-                <p>He also cleans and maps health data for field teams, and runs King’s Code Academy, where he teaches with patience and real projects instead of slides.</p>
-                <p>At university he led the final-year engineering cohort’s tech team and served as PRO of NUESA.</p>
-              </div>
-              <div className="stats">{stats.map((s) => <Stat key={s.label} {...s} />)}</div>
-            </div>
-          </div>
-        </section>
-
-        <section className="sec" id="stack">
-          <div className="wrap">
-            <h2>The toolkit</h2>
-            <div className="groups">
-              {groups.map(([title, color, items]) => (
-                <div className="glass group" key={title} style={{ "--c": color }}>
-                  <h3>{title}</h3>
-                  <ul className="chips">{items.map((i) => <li key={i}>{i}</li>)}</ul>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="sec" id="work">
-          <div className="wrap">
-            <h2>Work</h2>
-            <div className="work">
-              {missions.map((m) => (
-                <article className="glass card" key={m.title}>
-                  <h3>{m.title}</h3>
-                  <p>{m.body}</p>
-                  <small>{m.meta}</small>
-                  <Tags items={m.tags} />
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="contact" id="contact">
-          <div className="wrap">
-            <div className="contact-panel glass">
-              <div className="contact-copy">
-                <p className="eyebrow">Have a project in mind?</p>
-                <h2>Let’s make<br />something matter.</h2>
-                <p>Open to meaningful projects, thoughtful collaborations, and conversations about learning and technology.</p>
-                <span className="contact-status"><i />Based in Kebbi, Nigeria · Open to opportunities</span>
-              </div>
-              <div className="contact-links" aria-label="Connect with Aghedo">
-                {social.map(([label, href]) => (
-                  <a key={label} className="contact-link" href={href} target="_blank" rel="noopener noreferrer">
-                    <span className={"contact-symbol " + label.toLowerCase().replace(".", "")} aria-hidden="true">{label === "LinkedIn" ? "in" : label === "GitHub" ? "GH" : "DEV"}</span>
-                    <span className="contact-link-text"><b>{label}</b><small>{label === "LinkedIn" ? "Professional network" : label === "GitHub" ? "Code and projects" : "Articles and notes"}</small></span>
-                    <span className="contact-arrow" aria-hidden="true">↗</span>
-                  </a>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-        </>}
-      </main>
-
-      <footer>
-        <p>© 2026 Aghedo Oseiwe Promise. Founder of King’s Code Academy.</p>
-        <a href={page === "home" ? "#" : "/"} onClick={page === "home" ? (e) => { e.preventDefault(); scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" }); } : undefined}>{page === "home" ? "Back to top" : "Back home"}</a>
-      </footer>
+      <WorldBoundary worldId={id}>
+        <Suspense fallback={<Loading />}>
+          <World data={portfolio} />
+        </Suspense>
+      </WorldBoundary>
+      <WorldSwitcher
+        current={id}
+        onSwitch={onSelect}
+        onPreload={preloadWorld}
+      />
     </>
   );
 }

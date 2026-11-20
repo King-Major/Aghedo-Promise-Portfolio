@@ -1,21 +1,8 @@
-# Aghedo Promise — Portfolio (React + Vite)
+# Portfolio Worlds
+One content file, multiple visual "worlds".
+- `src/data/portfolio.js` – all copy, projects, links (edit here only)
+- `src/worlds.js` – registry of worlds; `src/App.jsx` – lazy-loaded routes (`/?world=professional`)
+- `src/worlds/professional/` – the finished Professional world
+- To add a world: create `src/worlds/<id>/`, register it in `App.jsx`, set `ready: true` in `worlds.js`.
 
-A one-page portfolio where the sky follows a full day as you scroll: sunrise in the hero, midday in the toolkit, golden hour in the work section, and a starry night at the contact section.
-
-## Run it
-
-```bash
-npm install
-npm run dev      # local dev server
-npm run build    # production build in dist/
-npm run preview  # preview the build
-```
-
-## Edit your content
-
-Everything you would change lives in `src/data.js` (stats, toolkit, projects, articles, links).
-Styles are in `src/styles.css`; scroll-driven sky logic is in `src/hooks.js`.
-
-## Deploy
-
-Push to GitHub and import the repo into Vercel or Netlify. Build command `npm run build`, output directory `dist`.
+    npm install && npm run dev

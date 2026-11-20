@@ -1,0 +1,13 @@
+.switcher{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:50;display:flex;align-items:center;gap:2px;padding:4px;border-radius:999px;background:rgba(15,20,35,.92);backdrop-filter:blur(10px);box-shadow:0 8px 30px rgba(0,0,0,.28);font:500 13px Inter,system-ui,sans-serif}
+.switcher a,.switcher span{display:inline-flex;align-items:center;min-height:36px;padding:0 14px;border-radius:999px;color:#c9cfe0;text-decoration:none;white-space:nowrap;transition:background .2s,color .2s}
+.switcher span{opacity:.45;cursor:not-allowed}
+.switcher a:hover{color:#fff;background:rgba(255,255,255,.1)}
+.switcher a[aria-current]{background:#fff;color:#0b0f19}
+.switcher .all{margin-left:4px;box-shadow:-1px 0 0 rgba(255,255,255,.15);border-radius:0 999px 999px 0}
+.switcher a:focus-visible{outline:2px solid #9aabff;outline-offset:2px}
+@media(max-width:560px){
+ .switcher{left:12px;right:12px;justify-content:center;overflow-x:auto}
+ .switcher span{display:none}
+ .switcher a,.switcher span{min-height:44px}
+}
+@media(prefers-reduced-motion:reduce){.switcher a{transition:none}}
