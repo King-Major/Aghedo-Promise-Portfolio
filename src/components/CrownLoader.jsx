@@ -8,7 +8,7 @@ const SCALE = 0.95;         // crown size in the scene
 const HOVER = 0.24;         // how far the pivot sits above the silk
 const TURN = 0.6;           // spin speed, radians per second
 const TILT = 0.2;           // the crown rests tilted toward the camera, like the photo
-const BG = 0x07030f;
+const BG = 0x050805;
 
 function radialTexture(stops) {
   const c = document.createElement("canvas");
@@ -31,7 +31,7 @@ function raysTexture() {
     g.save();
     g.rotate((i / 18) * Math.PI * 2 + (i % 2) * 0.08);
     const w = 0.03 + (i % 3) * 0.022;
-    g.fillStyle = "rgba(205,160,255,.55)";
+    g.fillStyle = "rgba(127,161,127,.55)";
     g.beginPath(); g.moveTo(0, 0); g.lineTo(130, -130 * w); g.lineTo(130, 130 * w); g.fill();
     g.restore();
   }
@@ -72,7 +72,7 @@ function silkFloorGeometry() {
 }
 
 /**
- * Full-screen intro: a glowing purple royal crown turning on dark draped silk.
+ * Full-screen intro: a glowing forest-green royal crown turning on dark draped silk.
  * Plays for at least `minMs`, then fades out and calls onDone().
  */
 export default function CrownLoader({ onDone, minMs = 3200 }) {
@@ -111,19 +111,19 @@ export default function CrownLoader({ onDone, minMs = 3200 }) {
     scene.environment = envTex;
 
     const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 60);
-    const key = new THREE.DirectionalLight(0xeadcff, 1.6);
+    const key = new THREE.DirectionalLight(0xe3eee1, 1.6);
     key.position.set(3, 6, 5);
-    const rim = new THREE.DirectionalLight(0xb36bff, 1.3);
+    const rim = new THREE.DirectionalLight(0x7fa17f, 1.3);
     rim.position.set(-5, 3, -4);
-    const hemi = new THREE.HemisphereLight(0x9a7ad0, BG, 0.55);
-    const under = new THREE.DirectionalLight(0xa050ff, 1.1);   // violet up-light from the silk
+    const hemi = new THREE.HemisphereLight(0x7fa17f, BG, 0.55);
+    const under = new THREE.DirectionalLight(0x395b39, 1.1);   // green up-light from the silk
     under.position.set(0, -2, 4);
     scene.add(key, rim, hemi, under);
 
     // Dark blue-grey satin for the drapes and the surface the crown rests on.
     const silk = new THREE.MeshPhysicalMaterial({
-      color: 0x2b1a4c, roughness: 0.42, metalness: 0.1, side: THREE.DoubleSide,
-      sheen: 1, sheenColor: new THREE.Color(0xa77bff), sheenRoughness: 0.35,
+      color: 0x1e2d1e, roughness: 0.42, metalness: 0.1, side: THREE.DoubleSide,
+      sheen: 1, sheenColor: new THREE.Color(0x7fa17f), sheenRoughness: 0.35,
       envMap: envTex, envMapIntensity: 0.3,
     });
     const drape = new THREE.Mesh(drapeGeometry(), silk);
@@ -148,7 +148,7 @@ export default function CrownLoader({ onDone, minMs = 3200 }) {
     }));
     const dustGeo = new THREE.BufferGeometry();
     dustGeo.setAttribute("position", new THREE.BufferAttribute(dustPos, 3));
-    const dotTex = radialTexture([[0, "rgba(236,208,255,1)"], [0.4, "rgba(190,130,255,.5)"], [1, "rgba(150,80,255,0)"]]);
+    const dotTex = radialTexture([[0, "rgba(232,238,231,1)"], [0.4, "rgba(127,161,127,.5)"], [1, "rgba(63,100,63,0)"]]);
     const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({
       map: dotTex, size: 0.09, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.8,
     }));
@@ -158,14 +158,14 @@ export default function CrownLoader({ onDone, minMs = 3200 }) {
     const glowMat = (map, opacity) => new THREE.SpriteMaterial({
       map, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity, fog: false,
     });
-    const haloTex = radialTexture([[0, "rgba(200,140,255,.95)"], [0.25, "rgba(150,80,255,.5)"], [0.6, "rgba(110,40,220,.16)"], [1, "rgba(80,20,180,0)"]]);
+    const haloTex = radialTexture([[0, "rgba(127,161,127,.95)"], [0.25, "rgba(63,100,63,.5)"], [0.6, "rgba(57,91,57,.16)"], [1, "rgba(33,55,24,0)"]]);
     const halo = new THREE.Sprite(glowMat(haloTex, 0.9));
     halo.position.set(0, -0.55, -1.2);
     const raysTex = raysTexture();
     const rays = new THREE.Sprite(glowMat(raysTex, 0.5));
     rays.scale.setScalar(12);
     rays.position.set(0, -0.55, -1.1);
-    const poolTex = radialTexture([[0, "rgba(190,120,255,.8)"], [0.5, "rgba(130,60,240,.3)"], [1, "rgba(90,30,200,0)"]]);
+    const poolTex = radialTexture([[0, "rgba(127,161,127,.8)"], [0.5, "rgba(63,100,63,.3)"], [1, "rgba(33,55,24,0)"]]);
     const pool = new THREE.Mesh(
       new THREE.PlaneGeometry(8, 8).rotateX(-Math.PI / 2),
       new THREE.MeshBasicMaterial({ map: poolTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.7, fog: false })
@@ -180,7 +180,7 @@ export default function CrownLoader({ onDone, minMs = 3200 }) {
       a: Math.random() * Math.PI * 2, r: 1.2 + Math.random() * 0.9, ph: Math.random(), s: 0.25 + Math.random() * 0.4,
     }));
     const sparkles = new THREE.Points(orbitGeo, new THREE.PointsMaterial({
-      map: dotTex, size: 0.14, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.95, color: 0xf0ddff,
+      map: dotTex, size: 0.14, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.95, color: 0xe8eee7,
     }));
     scene.add(sparkles);
 
@@ -269,7 +269,7 @@ export default function CrownLoader({ onDone, minMs = 3200 }) {
         .crown-intro.leaving{opacity:0;pointer-events:none}
         .crown-stage{position:absolute;inset:0}
         .crown-bar{position:absolute;left:50%;bottom:calc(7vh + env(safe-area-inset-bottom,0px));width:min(180px,40vw);height:2px;transform:translateX(-50%);background:rgba(255,255,255,.14);overflow:visible;border-radius:2px}
-        .crown-bar i{display:block;height:100%;width:100%;background:#b57bff;box-shadow:0 0 10px #a050ff;transform-origin:left;animation:crown-fill var(--dur) cubic-bezier(.3,.1,.2,1) forwards}
+        .crown-bar i{display:block;height:100%;width:100%;background:#7fa17f;box-shadow:0 0 10px #3f643f;transform-origin:left;animation:crown-fill var(--dur) cubic-bezier(.3,.1,.2,1) forwards}
         @keyframes crown-fill{from{transform:scaleX(0)}to{transform:scaleX(1)}}
         @media (prefers-reduced-motion:reduce){.crown-bar i{animation:none;transform:scaleX(1)}}
       `}</style>

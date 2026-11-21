@@ -1,9 +1,9 @@
 import * as THREE from "three";
 
 /**
- * A classic gold circlet crown, built in code and modelled on the reference photo:
+ * A classic forest-green circlet crown, built in code and modelled on the reference photo:
  * a flared polished band set with round and oval gems, a scalloped top edge that
- * rises to slender points tipped with purple-gold balls, and small diamond ornaments in
+ * rises to slender points tipped with green balls, and small diamond ornaments in
  * the valleys. Open inside (no cap, arches or cross). Base sits at y = 0 and the
  * crown is ~1.15 tall with a ~1.9 diameter.
  */
@@ -17,7 +17,7 @@ const PEAK = 1.08;         // height of the points
 const BAND_TOP = 0.4;      // top of the solid gem band
 const TILT = Math.atan(FLARE);
 
-const GOLD = { color: 0x9a5cf0, emissive: 0x3b1170, emissiveIntensity: 0.55, metalness: 1, roughness: 0.2, envMapIntensity: 1.8 }; // royal purple metal
+const GOLD = { color: 0x3f643f, emissive: 0x1f321f, emissiveIntensity: 0.55, metalness: 1, roughness: 0.2, envMapIntensity: 1.8 }; // forest-green metal
 
 const radiusAt = (y) => R0 + FLARE * y;
 
@@ -78,9 +78,9 @@ export function buildCrown() {
     color, emissive: color, emissiveIntensity: glow, roughness: 0.03, metalness: 0.05,
     clearcoat: 1, clearcoatRoughness: 0, ior: 1.77, flatShading: true, envMapIntensity: 2,
   }));
-  // (names kept from the old palette) hot pink, violet, cyan, lilac and white stones that glow a little
-  const ruby = gem(0xff3d9a, 0.55), garnet = gem(0x9b5cff, 0.55), emerald = gem(0x2de2ff, 0.5),
-    steel = gem(0xd8a8ff, 0.45), diamond = gem(0xf4eeff, 0.4);
+  // Forest-green stones with pale-green and white highlights.
+  const ruby = gem(0x395b39, 0.55), garnet = gem(0x4f774f, 0.55), emerald = gem(0x7fa17f, 0.5),
+    steel = gem(0xa9bea9, 0.45), diamond = gem(0xe8eee7, 0.4);
   const gems = [ruby, diamond, garnet, diamond, emerald, ruby, diamond, steel];
 
   const add = (geo, mat, parent = rig) => { const m = new THREE.Mesh(track(geo), mat); parent.add(m); return m; };
